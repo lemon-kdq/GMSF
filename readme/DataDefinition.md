@@ -43,3 +43,4 @@ This dataset contains multi-sensor fusion data from a robotic platform:
 3. **IMU**: High-frequency inertial measurements (~159 Hz based on message count)
 4. **LiDAR**: 3D point cloud data (~7.8 Hz)
 5. **Odometry**: Wheel velocity/encoder data (~50 Hz)
+
