@@ -203,7 +203,7 @@ def main():
     print(f'保存结果到: {args.output} (TUM格式)')
     with open(args.output, 'w') as f:
         for t, pos, quat in zip(timestamps, positions, quaternions):
-            f.write(f'{t:.9f} {pos[0]:.9f} {pos[1]:.9f} {pos[2]:.9f} {quat[0]:.9f} {quat[1]:.9f} {quat[2]:.9f} {quat[3]:.9f}\n')
+            f.write(f'{t:.6f} {pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f} {quat[0]:.6f} {quat[1]:.6f} {quat[2]:.6f} {quat[3]:.6f}\n')
 
     print(f'完成! 共输出 {len(positions)} 个位置点')
     print(f'位置范围:')

@@ -47,7 +47,7 @@ def convert_tum_to_att(input_file, output_file):
 
     # 保存文件
     print(f"保存ATT格式文件: {output_file}")
-    np.savetxt(output_file, att_data, fmt='%.9f')
+    np.savetxt(output_file, att_data, fmt='%.6f')
     print(f"转换完成: {len(timestamps)} 条数据")
 
     # 统计信息

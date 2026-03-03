@@ -17,7 +17,7 @@ def extract_bynav_pose(bag, output_path):
 
         for topic, msg, t in bag.read_messages(topics=['/gt/bynav_pose']):
             timestamp = msg.header.stamp.to_sec()
-            f.write(f'{timestamp},{msg.latitude},{msg.longitude},{msg.altitude},{msg.status.status},{msg.status.service}\n')
+            f.write(f'{timestamp:.6f},{msg.latitude:.6f},{msg.longitude:.6f},{msg.altitude:.6f},{msg.status.status:.6f},{msg.status.service:.6f}\n')
 
     print(f'已提取 bynav_pose 到 {output_path}')
 
@@ -40,7 +40,7 @@ def extract_imu(bag, output_path):
             qy = msg.orientation.y
             qz = msg.orientation.z
             qw = msg.orientation.w
-            f.write(f'{timestamp},{ax},{ay},{az},{gx},{gy},{gz},{qx},{qy},{qz},{qw}\n')
+            f.write(f'{timestamp:.6f},{ax:.6f},{ay:.6f},{az:.6f},{gx:.6f},{gy:.6f},{gz:.6f},{qx:.6f},{qy:.6f},{qz:.6f},{qw:.6f}\n')
 
     print(f'已提取 imu0 到 {output_path}')
 
@@ -64,9 +64,9 @@ def extract_wheel_velocity(bag, output_path):
                 first_msg = False
 
             timestamp = msg.header.stamp.to_sec()
-            f.write(f'{timestamp}')
+            f.write(f'{timestamp:.6f}')
             for vel in msg.velocity:
-                f.write(f',{vel}')
+                f.write(f',{vel:.6f}')
             f.write('\n')
 
     print(f'已提取 wheel_velocity 到 {output_path}')
@@ -81,7 +81,7 @@ def extract_lidar(bag, output_path):
         for topic, msg, t in bag.read_messages(topics=['/gt/lid0']):
             timestamp = msg.header.stamp.to_sec()
             point_num = msg.width * msg.height
-            f.write(f'{timestamp},{msg.width},{msg.height},{msg.point_step},{msg.row_step},{point_num}\n')
+            f.write(f'{timestamp:.6f},{msg.width:.6f},{msg.height:.6f},{msg.point_step:.6f},{msg.row_step:.6f},{point_num:.6f}\n')
 
     print(f'已提取 lid0 (点云摘要) 到 {output_path}')
 
@@ -94,7 +94,7 @@ def extract_compressed_image(bag, topic, output_path):
 
         for _, msg, t in bag.read_messages(topics=[topic]):
             timestamp = msg.header.stamp.to_sec()
-            f.write(f'{timestamp},{msg.format}\n')
+            f.write(f'{timestamp:.6f},{msg.format}\n')
 
     print(f'已提取 {topic} 到 {output_path}')
 

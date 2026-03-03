@@ -58,10 +58,10 @@ def replace_quaternions(imu_file, att_quat_map, output_file):
             if timestamp in att_quat_map:
                 qx, qy, qz, qw = att_quat_map[timestamp]
                 # 替换四元数（索引7, 8, 9, 10）
-                parts[7] = str(qx)
-                parts[8] = str(qy)
-                parts[9] = str(qz)
-                parts[10] = str(qw)
+                parts[7] = f'{qx:.6f}'
+                parts[8] = f'{qy:.6f}'
+                parts[9] = f'{qz:.6f}'
+                parts[10] = f'{qw:.6f}'
                 replaced_count += 1
             # 如果找不到，保持原样
 
