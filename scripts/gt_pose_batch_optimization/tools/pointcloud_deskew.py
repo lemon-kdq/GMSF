@@ -44,6 +44,69 @@ def interpolate_pose(timestamps, positions, quaternions, query_time):
     q_interp = interpolate_quat(q0,q1,t0,t1,query_time)
     return p_interp, q_interp
 
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+
+def deskew_pointcloud_batch(
+    pc_np,
+    lidar_ts,
+    target_ts,
+    pose_timestamps,
+    positions,
+    quaternions,
+    batch_ms=1.0
+):
+    """
+    按 curvature 时间分桶（每 batch_ms ms）进行批量正畸
+    """
+
+    # ---------- 1. 按 curvature 排序 ----------
+    order = np.argsort(pc_np[:, 7])
+    pc = pc_np[order]
+
+    pc_corrected = np.copy(pc)
+
+    # ---------- 2. 目标时刻位姿 ----------
+    p_target, q_target = interpolate_pose(
+        pose_timestamps, positions, quaternions, target_ts
+    )
+    r_target = R.from_quat(q_target)
+
+    # ---------- 3. 生成时间 batch id ----------
+    # curvature 是 ms
+    batch_ids = np.floor(pc[:, 7] / batch_ms).astype(np.int64)
+    unique_batches = np.unique(batch_ids)
+
+    # ---------- 4. 按 batch 处理 ----------
+    for bid in unique_batches:
+        mask = batch_ids == bid
+        idx = np.where(mask)[0]
+
+        # 该 batch 的代表时间（用第一个点即可）
+        dt_ms = pc[idx[0], 7]
+        point_time = lidar_ts + dt_ms * 1e-3
+
+        # 插值该 batch 的位姿
+        p_point, q_point = interpolate_pose(
+            pose_timestamps, positions, quaternions, point_time
+        )
+        r_point = R.from_quat(q_point)
+
+        # ---------- 批量旋转 ----------
+        pts = pc[idx, :3]                          # (M,3)
+        pts_world = r_point.apply(pts) + p_point   # (M,3)
+        pts_corrected = r_target.inv().apply(
+            pts_world - p_target
+        )
+
+        pc_corrected[idx, :3] = pts_corrected
+
+    # ---------- 5. 恢复原始点顺序 ----------
+    pc_out = np.empty_like(pc_corrected)
+    pc_out[order] = pc_corrected
+
+    return pc_out
+
 def deskew_pointcloud(pc_np, lidar_ts, target_ts, pose_timestamps, positions, quaternions):
     """
     对点云逐点正畸
@@ -96,7 +159,7 @@ def main():
         print(f"pcd : {pcd_path}")
         pc_np = load_pcd_at_pointxyzinormal(pcd_path)
         
-        pc_corrected = deskew_pointcloud(pc_np, lidar_ts, target_ts, pose_timestamps, positions, quaternions)
+        pc_corrected = deskew_pointcloud_batch(pc_np, lidar_ts, target_ts, pose_timestamps, positions, quaternions)
 
         out_path = out_dir / f"{target_ts}.pcd"
         # 保存为新的pcd
