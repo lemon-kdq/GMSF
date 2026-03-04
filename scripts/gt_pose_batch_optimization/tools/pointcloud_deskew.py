@@ -3,8 +3,18 @@ import numpy as np
 from pathlib import Path
 import argparse
 from scipy.spatial.transform import Rotation as R, Slerp
+from dataclasses import dataclass
 
+@dataclass
+class PoseTUM:
+    timestamp: float
+    position: np.ndarray   # (3,)
+    quaternion: np.ndarray # (4,) xyzw
 
+    def to_tum_line(self) -> str:
+        x, y, z = self.position
+        qx, qy, qz, qw = self.quaternion
+        return f"{self.timestamp:.6f} {x:.6f} {y:.6f} {z:.6f} {qx:.6f} {qy:.6f} {qz:.6f} {qw:.6f}\n"
 
 def read_tum_poses(tum_file):
     """
@@ -44,8 +54,7 @@ def interpolate_pose(timestamps, positions, quaternions, query_time):
     q_interp = interpolate_quat(q0,q1,t0,t1,query_time)
     return p_interp, q_interp
 
-import numpy as np
-from scipy.spatial.transform import Rotation as R
+
 
 def deskew_pointcloud_batch(
     pc_np,
@@ -72,6 +81,11 @@ def deskew_pointcloud_batch(
     )
     r_target = R.from_quat(q_target)
 
+    target_pose = PoseTUM(
+        timestamp=target_ts,
+        position=p_target,
+        quaternion=q_target
+    )
     # ---------- 3. 生成时间 batch id ----------
     # curvature 是 ms
     batch_ids = np.floor(pc[:, 7] / batch_ms).astype(np.int64)
@@ -105,7 +119,7 @@ def deskew_pointcloud_batch(
     pc_out = np.empty_like(pc_corrected)
     pc_out[order] = pc_corrected
 
-    return pc_out
+    return pc_out,target_pose
 
 def deskew_pointcloud(pc_np, lidar_ts, target_ts, pose_timestamps, positions, quaternions):
     """
@@ -142,9 +156,9 @@ def main():
     args = parser.parse_args()
 
     pose_timestamps, positions, quaternions = read_tum_poses(args.pose_file)
-    out_dir = Path(args.out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-
+    ds_pcd_dir = Path(f"{args.out_dir}/pcd")
+    ds_pcd_dir.mkdir(parents=True, exist_ok=True)
+    txt_path = f"{args.out_dir}/target_pose.txt"
     with open(args.timestamp_txt) as f:
         lines = f.readlines()
 
@@ -159,12 +173,13 @@ def main():
         print(f"pcd : {pcd_path}")
         pc_np = load_pcd_at_pointxyzinormal(pcd_path)
         
-        pc_corrected = deskew_pointcloud_batch(pc_np, lidar_ts, target_ts, pose_timestamps, positions, quaternions)
+        pc_corrected,tar_pos = deskew_pointcloud_batch(pc_np, lidar_ts, target_ts, pose_timestamps, positions, quaternions)
 
-        out_path = out_dir / f"{target_ts}.pcd"
+        out_path = ds_pcd_dir / f"{target_ts:.6f}.pcd"
         # 保存为新的pcd
         write_pcd_with_array_in_pointxyzinormal(pc_corrected,out_path)
         print(f"保存正畸点云: {out_path}")
-
+        with open(txt_path, 'a') as wf:
+            wf.write(tar_pos.to_tum_line())
 if __name__ == "__main__":
     main()
