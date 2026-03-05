@@ -1,4 +1,4 @@
-from gt_tools.pcd.pcd_io import load_pcd_at_pointxyzinormal,write_pcd_with_array_in_pointxyzinormal 
+from gt_tools.pcd.pcd_io import load_pcd_at_pointrgbal,write_pcd_with_array_in_pointxyzinormal 
 import numpy as np
 from pathlib import Path
 import argparse
@@ -70,7 +70,7 @@ def deskew_pointcloud_batch(
     """
 
     # ---------- 1. 按 curvature 排序 ----------
-    order = np.argsort(pc_np[:, 7])
+    order = np.argsort(pc_np[:, 4])
     pc = pc_np[order]
 
     pc_corrected = np.copy(pc)
@@ -88,7 +88,7 @@ def deskew_pointcloud_batch(
     )
     # ---------- 3. 生成时间 batch id ----------
     # curvature 是 ms
-    batch_ids = np.floor(pc[:, 7] / batch_ms).astype(np.int64)
+    batch_ids = np.floor(pc[:, 4] / batch_ms).astype(np.int64)
     unique_batches = np.unique(batch_ids)
 
     # ---------- 4. 按 batch 处理 ----------
@@ -97,7 +97,7 @@ def deskew_pointcloud_batch(
         idx = np.where(mask)[0]
 
         # 该 batch 的代表时间（用第一个点即可）
-        dt_ms = pc[idx[0], 7]
+        dt_ms = pc[idx[0], 4]
         point_time = lidar_ts + dt_ms * 1e-3
 
         # 插值该 batch 的位姿
@@ -135,7 +135,7 @@ def deskew_pointcloud(pc_np, lidar_ts, target_ts, pose_timestamps, positions, qu
     r_target = R.from_quat(q_target)
 
     for i in range(N):
-        dt = pc_np[i,7]  # curvature列: 点相对于第一个点时间差
+        dt = pc_np[i,4]  # curvature列: 点相对于第一个点时间差
         point_time = lidar_ts + dt * 1e-3
         # 插值 LiDAR 当前点位姿
         p_point, q_point = interpolate_pose(pose_timestamps, positions, quaternions, point_time)
@@ -150,16 +150,16 @@ def deskew_pointcloud(pc_np, lidar_ts, target_ts, pose_timestamps, positions, qu
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("pose_file", help="TUM格式位姿文件")
-    parser.add_argument("timestamp_txt", help="txt文件: 第一列LiDAR时间戳，第二列目标时间戳")
+    parser.add_argument("keyframe_file", help="txt文件: 第一列LiDAR时间戳，第二列目标时间戳")
     parser.add_argument("pcd_dir", help="pcd文件夹路径")
-    parser.add_argument("--out_dir", help="保存正畸pcd", default="./deskewed")
+    parser.add_argument("out_dir", help="保存正畸pcd", default="./deskewed")
     args = parser.parse_args()
 
     pose_timestamps, positions, quaternions = read_tum_poses(args.pose_file)
     ds_pcd_dir = Path(f"{args.out_dir}/pcd")
     ds_pcd_dir.mkdir(parents=True, exist_ok=True)
     txt_path = f"{args.out_dir}/target_pose.txt"
-    with open(args.timestamp_txt) as f:
+    with open(args.keyframe_file) as f:
         lines = f.readlines()
 
     for line in lines[1:]:  # 如果第一行是表头
@@ -171,7 +171,7 @@ def main():
             print(f"PCD不存在: {pcd_path}")
             continue
         print(f"pcd : {pcd_path}")
-        pc_np = load_pcd_at_pointxyzinormal(pcd_path)
+        pc_np = load_pcd_at_pointrgbal(pcd_path)
         
         pc_corrected,tar_pos = deskew_pointcloud_batch(pc_np, lidar_ts, target_ts, pose_timestamps, positions, quaternions)
 

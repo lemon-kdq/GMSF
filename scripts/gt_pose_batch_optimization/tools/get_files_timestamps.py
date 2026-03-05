@@ -8,13 +8,11 @@ IMG_EXTS = {".png", ".jpg", ".jpeg"}
 def main():
     parser = argparse.ArgumentParser(description="Extract filenames (without suffix) from pcd or image files")
     parser.add_argument("input_dir", help="input folder with pcd or image files")
-    parser.add_argument("output_dir", help="output folder to save timestamps txt")
+    parser.add_argument("output_file", help="output folder to save timestamps txt")
     args = parser.parse_args()
 
     input_dir = Path(args.input_dir)
-    output_dir = Path(args.output_dir)
     assert input_dir.is_dir(), f"Input directory does not exist: {input_dir}"
-    output_dir.mkdir(parents=True, exist_ok=True)
 
     files = [f for f in input_dir.iterdir() if f.is_file()]
     if not files:
@@ -23,13 +21,10 @@ def main():
 
     # 判断类型
     ext = files[0].suffix.lower()
-    if ext == ".pcd":
-        out_file = output_dir / "lid_timestamps.txt"
-    elif ext in IMG_EXTS:
-        out_file = output_dir / "img_timestamps.txt"
-    else:
-        print(f"Unsupported file type: {ext}")
-        return
+
+    out_file = args.output_file
+
+ 
 
     # 提取文件名（不含后缀），完全保留文件名里“.pcd/.png”前的所有字符
     names = [f.stem for f in files]

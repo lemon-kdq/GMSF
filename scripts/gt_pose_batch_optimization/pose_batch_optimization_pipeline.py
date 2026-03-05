@@ -48,7 +48,8 @@ def get_scripts_dir():
 def main():
     parser = argparse.ArgumentParser(description='姿态批量优化流水线')
     parser.add_argument('--bag-path', type=str, required=True, help='rosbag文件路径')
-    parser.add_argument('--lid-imu-path', type=str, required=True, help='rosbag文件路径')
+    parser.add_argument('--lid-imu-path', type=str, required=True, help='lid-imu路径')
+    parser.add_argument('--cam', type=str, required=True, help='cam路径')
     parser.add_argument('--output-dir', type=str, default='./output', help='输出目录路径')
 
     # 步骤控制
@@ -81,6 +82,13 @@ def main():
     convert_script = os.path.join(scripts_dir, 'convert_tum_to_att.py')
     replace_script = os.path.join(scripts_dir, 'replace_imu_quat.py')
     dead_reckoning_script = os.path.join(scripts_dir, 'imu_dead_reckoning.py')
+    transform_imu_script = os.path.join(scripts_dir,"transform_imu_format.py")
+    get_lid_cam_timestamp_script = os.path.join(scripts_dir,"get_files_timestamps.py")
+    select_keyframe_script = os.path.join(scripts_dir,"select_keyframe.py")
+    lid_deskew_script = os.path.join(scripts_dir,"pointcloud_deskew.py")
+    gtsam_opt_script = os.path.join(scripts_dir,"gtsam_pose_optimization.py")
+    merged_map_script = os.path.join(scripts_dir,"generate_map.py")
+
 
     print(f"\n{'#'*60}")
     print(f"# 姿态批量优化流水线")
@@ -89,20 +97,46 @@ def main():
     print(f"输出目录: {args.output_dir}")
     print(f"脚本目录: {scripts_dir}")
 
-    # 定义文件路径
+    # 定义文件路径 
+    cam_raw_path = args.cam
+    imu0_raw_path = os.path.join(args.lid_imu_path,"imu_1.txt")
+    lid0_raw_path = os.path.join(args.lid_imu_path,"slam_pcd_1")
     imu0_path = os.path.join(args.output_dir, 'imu0.txt')
     wheel_vel_path = os.path.join(args.output_dir, 'wheel_velocity.txt')
     imu0_vqf_path = os.path.join(args.output_dir, 'imu0_vqf.txt')
     imu0_att_path = os.path.join(args.output_dir, 'imu0_att.txt')
     imu0_replaced_path = os.path.join(args.output_dir, 'imu0_replaced.txt')
     pose_output_path = os.path.join(args.output_dir, 'imu0_pose.txt')
-
-
+    deskew_pcd_path = os.path.join(args.output_dir,"deskew_pcd_and_pose")
+    lid_timestamp_file = os.path.join(args.output_dir,"lid0_timestamps.txt")
+    cam_timestamp_file = os.path.join(args.output_dir,"cam_timestamps.txt")
+    keyframe_file = os.path.join(args.output_dir,"keyframes.txt")
+    gtsam_pose_file = os.path.join(args.output_dir,"gtsam_pose.txt")
+    map_file = os.path.join(args.output_dir,"opt_map.pcd")
+    # ===== 步骤0: imu0数据格式转换 =====
+    if not args.skip_extract:
+        run_step(
+            "转换IMU格式",
+            ['python3', transform_imu_script,
+             '-i', imu0_raw_path,
+             '-o', imu0_path]
+        )
+    else:
+        print("\n跳过步骤1: 数据提取")
+        
     # ===== 步骤1: 提取传感器数据 =====
     if not args.skip_extract:
         run_step(
             "从rosbag提取传感器数据",
             ['python3', extract_script, args.bag_path, args.output_dir]
+        )
+        run_step(
+            "获得lid的时间戳",
+            ['python3', get_lid_cam_timestamp_script, lid0_raw_path, lid_timestamp_file]
+        )
+        run_step(
+            "获得img的时间戳",
+            ['python3', get_lid_cam_timestamp_script, cam_raw_path, cam_timestamp_file]
         )
     else:
         print("\n跳过步骤1: 数据提取")
@@ -154,6 +188,35 @@ def main():
         )
     else:
         print("\n跳过步骤5: 航位推算")
+        
+    # ===== 步骤5: 航位推算 =====
+    run_step(
+        "选择关键帧",
+        ['python3', select_keyframe_script, cam_timestamp_file, lid_timestamp_file, imu0_replaced_path, keyframe_file]
+    )
+    
+    
+    # ===== 步骤6: 点云正畸 =====
+    run_step(
+        "点云正畸",
+        ['python3', lid_deskew_script, pose_output_path, keyframe_file, lid0_raw_path, deskew_pcd_path]
+    )
+
+    # ===== 步骤7: gtsam优化 =====
+    run_step(
+        "gtsam优化",
+        ['python3', gtsam_opt_script,
+         '--pose_file', pose_output_path,
+         '--pcd_folder', deskew_pcd_path,
+         '--output_file', gtsam_pose_file]
+    )
+
+    # ===== 步骤8: merged map生成 =====
+    run_step(
+        "map生成",
+        ['python3', merged_map_script, deskew_pcd_path, gtsam_pose_file, map_file]
+    )
+
 
     # ===== 完成 =====
     print(f"\n{'#'*60}")

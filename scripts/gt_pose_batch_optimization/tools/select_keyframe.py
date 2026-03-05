@@ -108,8 +108,8 @@ def match_lidar_to_camera(lidar_ts_float_list, camera_ts_float_list, keyframe_ti
 def main():
     parser = argparse.ArgumentParser(description='LiDAR关键帧选择')
     parser.add_argument('cam0', type=str, help='cam0.txt 文件路径（图像时间戳）')
-    parser.add_argument('imu0_pose', type=str, help='imu0_pose.txt 文件路径（IMU位姿，TUM格式）')
     parser.add_argument('lid0', type=str, help='lid0.txt 文件路径（LiDAR时间戳）')
+    parser.add_argument('imu0_pose', type=str, help='imu0_pose.txt 文件路径（IMU位姿，TUM格式）')
     parser.add_argument('output', type=str, help='输出文件路径')
     parser.add_argument('--sync-threshold', type=float, default=0.01, help='同步时间差阈值（秒）')
     parser.add_argument('--match-threshold', type=float, default=0.05, help='匹配时间差阈值（秒）')
