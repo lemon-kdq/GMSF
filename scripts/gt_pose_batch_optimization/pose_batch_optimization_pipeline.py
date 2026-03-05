@@ -48,6 +48,7 @@ def get_scripts_dir():
 def main():
     parser = argparse.ArgumentParser(description='姿态批量优化流水线')
     parser.add_argument('--bag-path', type=str, required=True, help='rosbag文件路径')
+    parser.add_argument('--lid-imu-path', type=str, required=True, help='rosbag文件路径')
     parser.add_argument('--output-dir', type=str, default='./output', help='输出目录路径')
 
     # 步骤控制
