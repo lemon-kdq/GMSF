@@ -111,12 +111,12 @@ def main():
 
     # 提取各个topic的数据
     extract_bynav_pose(bag, f'{args.output_dir}/bynav_pose.txt')
-    extract_imu(bag, f'{args.output_dir}/imu0.txt')
+    #extract_imu(bag, f'{args.output_dir}/imu0.txt')
     extract_wheel_velocity(bag, f'{args.output_dir}/wheel_velocity.txt')
-    extract_lidar(bag, f'{args.output_dir}/lid0.txt')
-    # 提取图像数据
-    extract_compressed_image(bag, '/GT23/CAM_0/compressed_image', f'{args.output_dir}/cam0.txt')
-    extract_compressed_image(bag, '/GT23/CAM_1/compressed_image', f'{args.output_dir}/cam1.txt')
+    #extract_lidar(bag, f'{args.output_dir}/lid0.txt')
+    # # 提取图像数据
+    # extract_compressed_image(bag, '/GT23/CAM_0/compressed_image', f'{args.output_dir}/cam0.txt')
+    # extract_compressed_image(bag, '/GT23/CAM_1/compressed_image', f'{args.output_dir}/cam1.txt')
 
     bag.close()
     print(f'所有数据已提取完成，保存在: {args.output_dir}')
