@@ -13,8 +13,8 @@ class LidarPlaneOptimizer:
         self.timestamps = [] # 用于保存原始时间戳
 
         # --- 噪声模型 ---
-        self.odom_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([0.01, 0.01, 0.01, 0.05, 0.05, 0.05]))
-        self.horizontal_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([0.001, 0.001]))
+        self.odom_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([0.05, 0.05, 0.2, 2.0, 2.0, 0.5]))
+        self.horizontal_noise = gtsam.noiseModel.Diagonal.Sigmas(np.array([0.01, 0.01]))
         self.plane_noise_model = gtsam.noiseModel.Robust.Create(
             gtsam.noiseModel.mEstimator.Huber.Create(0.1),
             gtsam.noiseModel.Isotropic.Sigma(1, 0.1)
