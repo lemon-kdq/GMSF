@@ -31,7 +31,7 @@ def main():
     names.sort()  # 按字典序排序
 
     # 保存到 txt
-    with out_file.open("w") as fo:
+    with open(out_file,"w") as fo:
         for name in names:
             fo.write(f"{name}\n")
 

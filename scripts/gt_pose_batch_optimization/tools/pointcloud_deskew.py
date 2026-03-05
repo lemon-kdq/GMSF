@@ -1,4 +1,4 @@
-from gt_tools.pcd.pcd_io import load_pcd_at_pointrgbal,write_pcd_with_array_in_pointxyzinormal 
+from gt_tools.pcd.pcd_io import load_pcd_at_pointrgbal,write_pcd_with_array_in_pointrgbal 
 import numpy as np
 from pathlib import Path
 import argparse
@@ -177,7 +177,7 @@ def main():
 
         out_path = ds_pcd_dir / f"{target_ts:.6f}.pcd"
         # 保存为新的pcd
-        write_pcd_with_array_in_pointxyzinormal(pc_corrected,out_path)
+        write_pcd_with_array_in_pointrgbal(pc_corrected,out_path)
         print(f"保存正畸点云: {out_path}")
         with open(txt_path, 'a') as wf:
             wf.write(tar_pos.to_tum_line())

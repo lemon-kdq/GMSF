@@ -189,32 +189,34 @@ def main():
     else:
         print("\n跳过步骤5: 航位推算")
         
-    # ===== 步骤5: 航位推算 =====
+    # ===== 步骤6: 选择关键帧 =====
     run_step(
         "选择关键帧",
-        ['python3', select_keyframe_script, cam_timestamp_file, lid_timestamp_file, imu0_replaced_path, keyframe_file]
+        ['python3', select_keyframe_script, cam_timestamp_file, lid_timestamp_file, pose_output_path, keyframe_file]
     )
     
     
-    # ===== 步骤6: 点云正畸 =====
+    # ===== 步骤7: 点云正畸 =====
     run_step(
         "点云正畸",
         ['python3', lid_deskew_script, pose_output_path, keyframe_file, lid0_raw_path, deskew_pcd_path]
     )
 
-    # ===== 步骤7: gtsam优化 =====
+    # ===== 步骤8: gtsam优化 =====
+    deskew_pcd_real_path = os.path.join(deskew_pcd_path,"pcd")
+    deskew_pcd_pose = os.path.join(deskew_pcd_path,"target_pose.txt")
     run_step(
         "gtsam优化",
         ['python3', gtsam_opt_script,
-         '--pose_file', pose_output_path,
-         '--pcd_folder', deskew_pcd_path,
+         '--pose_file', deskew_pcd_pose,
+         '--pcd_folder', deskew_pcd_real_path,
          '--output_file', gtsam_pose_file]
     )
 
     # ===== 步骤8: merged map生成 =====
     run_step(
         "map生成",
-        ['python3', merged_map_script, deskew_pcd_path, gtsam_pose_file, map_file]
+        ['python3', merged_map_script, deskew_pcd_real_path, gtsam_pose_file, map_file]
     )
 
 
