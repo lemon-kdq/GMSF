@@ -15,7 +15,7 @@ import os
 import sys
 import argparse
 import subprocess
-
+from gt_tools.gt.gt_cmd import run_shell_cmd
 
 def run_step(description, cmd):
     """执行一个处理步骤"""
@@ -113,7 +113,12 @@ def main():
     keyframe_file = os.path.join(args.output_dir,"keyframes.txt")
     gtsam_pose_file = os.path.join(args.output_dir,"gtsam_pose.txt")
     map_file = os.path.join(args.output_dir,"opt_map.pcd")
-    smoothed_all_imu_pose_file = os.path.join(args.output_dir,"all_imu_smooth.pcd")
+    smoothed_all_imu_pose_file = os.path.join(args.output_dir,"all_imu_smooth.txt")
+    evo_evaluate_path = os.path.join(args.output_dir,"evo_output")
+    evo_evaluate_with_keyframe = os.path.join(evo_evaluate_path,"gtsam_compare.png")
+    evo_evaluate_with_raw = os.path.join(evo_evaluate_path,"raw_compare.png")
+
+    os.makedirs(evo_evaluate_path,exist_ok=True)
     # ===== 步骤0: imu0数据格式转换 =====
     if not args.skip_extract:
         run_step(
@@ -227,6 +232,12 @@ def main():
          '-kf', gtsam_pose_file,
          '--o', smoothed_all_imu_pose_file]
     )
+    
+    evo_cmd1 = f"evo_traj tum {smoothed_all_imu_pose_file} --ref {gtsam_pose_file} --save_plot {evo_evaluate_with_keyframe}"
+    evo_cmd2 = f"evo_traj tum {smoothed_all_imu_pose_file} --ref {pose_output_path} --save_plot {evo_evaluate_with_raw}"
+    run_shell_cmd(evo_cmd1)
+    run_shell_cmd(evo_cmd2)
+    
     # ===== 完成 =====
     print(f"\n{'#'*60}")
     print(f"# 流水线完成！")
