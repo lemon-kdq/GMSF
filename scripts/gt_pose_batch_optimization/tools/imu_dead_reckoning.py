@@ -58,7 +58,7 @@ def interpolate_data(query_timestamps, ref_timestamps, ref_values):
     """线性插值"""
     from scipy.interpolate import interp1d
     if len(ref_timestamps) < 2:
-        return np.full(len(query_timestamps), ref_values[0] if len(ref_values) > 0 else 0)
+        return np.full((len(query_timestamps), ref_values.shape[1]), ref_values[0] if len(ref_values) > 0 else 0)
     f = interp1d(ref_timestamps, ref_values, axis=0, kind='linear', bounds_error=False, fill_value="extrapolate")
     return f(query_timestamps)
 
@@ -99,6 +99,7 @@ def dead_reckoning(wheel_timestamps, wheel_velocities, imu_timestamps, imu_quate
         positions: IMU位置数组 [x, y, z]
         timestamps: 对应时间戳
         quaternions: IMU四元数数组 [qx, qy, qz, qw] (与世界坐标系对齐)
+        velocities_world: IMU在世界坐标系下的速度数组 [vx, vy, vz]
     """
     if extrinsic_rot is None:
         extrinsic_rot = [0.0, 0.0, 0.0]  # 默认无安装偏角
@@ -117,6 +118,7 @@ def dead_reckoning(wheel_timestamps, wheel_velocities, imu_timestamps, imu_quate
 
     # 初始化
     positions = np.zeros((len(imu_timestamps), 3))
+    velocities_world = np.zeros((len(imu_timestamps), 3)) # 添加速度存储
     positions[0] = initial_pos
 
     dt = np.diff(imu_timestamps)
@@ -149,11 +151,12 @@ def dead_reckoning(wheel_timestamps, wheel_velocities, imu_timestamps, imu_quate
         # ===== 第四步：将IMU速度转到世界坐标系 =====
         # v_I^W = R_V^W · v_I^V
         v_I_W = R_V_W @ v_I_V
+        velocities_world[i] = v_I_W # 记录世界系下的IMU速度
 
         # ===== 第五步：位置积分 =====
         positions[i] = positions[i-1] + v_I_W * dt[i-1]
 
-    return positions, imu_timestamps, imu_quaternions
+    return positions, imu_timestamps, imu_quaternions, velocities_world
 
 
 def main():
@@ -191,7 +194,7 @@ def main():
     print(f'  初始位置（世界坐标系）(m): {initial_pos}')
 
     print('开始航位推算...')
-    positions, timestamps, quaternions = dead_reckoning(
+    positions, timestamps, quaternions, velocities_world = dead_reckoning(
         wheel_timestamps, wheel_velocities,
         imu_timestamps, imu_quaternions, imu_gyro,
         extrinsic_rot=extrinsic_rot,
@@ -204,6 +207,14 @@ def main():
     with open(args.output, 'w') as f:
         for t, pos, quat in zip(timestamps, positions, quaternions):
             f.write(f'{t:.6f} {pos[0]:.6f} {pos[1]:.6f} {pos[2]:.6f} {quat[0]:.6f} {quat[1]:.6f} {quat[2]:.6f} {quat[3]:.6f}\n')
+
+    # 保存速度结果 (CSV格式)
+    vel_output = args.output.replace('.txt', '_vel.csv')
+    print(f'保存速度数据到: {vel_output}')
+    with open(vel_output, 'w') as f:
+        f.write("timestamp,vx,vy,vz\n")
+        for t, v in zip(timestamps, velocities_world):
+            f.write(f'{t:.6f},{v[0]:.6f},{v[1]:.6f},{v[2]:.6f}\n')
 
     print(f'完成! 共输出 {len(positions)} 个位置点')
     print(f'位置范围:')
