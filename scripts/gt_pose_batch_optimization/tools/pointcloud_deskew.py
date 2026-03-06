@@ -98,7 +98,7 @@ def deskew_pointcloud_batch(
 
         # 该 batch 的代表时间（用第一个点即可）
         dt_ms = pc[idx[0], 4]
-        point_time = lidar_ts + dt_ms * 1e-3
+        point_time = lidar_ts + dt_ms * 1e-9
 
         # 插值该 batch 的位姿
         p_point, q_point = interpolate_pose(
@@ -136,7 +136,7 @@ def deskew_pointcloud(pc_np, lidar_ts, target_ts, pose_timestamps, positions, qu
 
     for i in range(N):
         dt = pc_np[i,4]  # curvature列: 点相对于第一个点时间差
-        point_time = lidar_ts + dt * 1e-3
+        point_time = lidar_ts + dt * 1e-9
         # 插值 LiDAR 当前点位姿
         p_point, q_point = interpolate_pose(pose_timestamps, positions, quaternions, point_time)
         # 将点从 LiDAR frame 转到世界，再再转换到目标时刻 frame
