@@ -70,7 +70,7 @@ def deskew_pointcloud_batch(
     """
 
     # ---------- 1. 按 curvature 排序 ----------
-    order = np.argsort(pc_np[:, 4])
+    order = np.argsort(pc_np[:, 4] * 1e-6) 
     pc = pc_np[order]
 
     pc_corrected = np.copy(pc)
@@ -88,7 +88,7 @@ def deskew_pointcloud_batch(
     )
     # ---------- 3. 生成时间 batch id ----------
     # curvature 是 ms
-    batch_ids = np.floor(pc[:, 4] / batch_ms).astype(np.int64)
+    batch_ids = np.floor(pc[:, 4] * 1e-6 / batch_ms).astype(np.int64)
     unique_batches = np.unique(batch_ids)
 
     # ---------- 4. 按 batch 处理 ----------
@@ -97,8 +97,8 @@ def deskew_pointcloud_batch(
         idx = np.where(mask)[0]
 
         # 该 batch 的代表时间（用第一个点即可）
-        dt_ms = pc[idx[0], 4]
-        point_time = lidar_ts + dt_ms * 1e-9
+        dt_ns = pc[idx[0], 4]
+        point_time = lidar_ts + dt_ns * 1e-9
 
         # 插值该 batch 的位姿
         p_point, q_point = interpolate_pose(
