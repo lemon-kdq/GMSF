@@ -88,7 +88,7 @@ def main():
     lid_deskew_script = os.path.join(scripts_dir,"pointcloud_deskew.py")
     gtsam_opt_script = os.path.join(scripts_dir,"gtsam_pose_optimization.py")
     merged_map_script = os.path.join(scripts_dir,"generate_map.py")
-
+    smooth_imu_pose_script = os.path.join(scripts_dir,"smooth_imu_pose.py")
 
     print(f"\n{'#'*60}")
     print(f"# 姿态批量优化流水线")
@@ -113,6 +113,7 @@ def main():
     keyframe_file = os.path.join(args.output_dir,"keyframes.txt")
     gtsam_pose_file = os.path.join(args.output_dir,"gtsam_pose.txt")
     map_file = os.path.join(args.output_dir,"opt_map.pcd")
+    smoothed_all_imu_pose_file = os.path.join(args.output_dir,"all_imu_smooth.pcd")
     # ===== 步骤0: imu0数据格式转换 =====
     if not args.skip_extract:
         run_step(
@@ -219,7 +220,13 @@ def main():
         ['python3', merged_map_script, deskew_pcd_real_path, gtsam_pose_file, map_file]
     )
 
-
+    run_step(
+        "smooth所有的imu pose",
+        ['python3', smooth_imu_pose_script,
+         '-hf', pose_output_path,
+         '-kf', gtsam_pose_file,
+         '--o', smoothed_all_imu_pose_file]
+    )
     # ===== 完成 =====
     print(f"\n{'#'*60}")
     print(f"# 流水线完成！")
