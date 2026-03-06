@@ -113,7 +113,7 @@ def main():
     parser.add_argument('output', type=str, help='输出文件路径')
     parser.add_argument('--sync-threshold', type=float, default=0.01, help='同步时间差阈值（秒）')
     parser.add_argument('--match-threshold', type=float, default=0.05, help='匹配时间差阈值（秒）')
-    parser.add_argument('--pose-threshold', type=float, default=5, help='关键帧pose距离阈值（米）')
+    parser.add_argument('--pose-threshold', type=float, default=20, help='关键帧pose距离阈值（米）')
     parser.add_argument('--angle-threshold', type=float, default=15, help='关键帧angle阈值（度）')
     parser.add_argument('--time-threshold', type=float, default=10, help='关键帧时间间隔阈值（秒）')
     args = parser.parse_args()
