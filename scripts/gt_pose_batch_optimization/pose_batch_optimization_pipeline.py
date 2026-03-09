@@ -47,7 +47,9 @@ def get_scripts_dir():
 
 def main():
     parser = argparse.ArgumentParser(description='姿态批量优化流水线')
-    parser.add_argument('--bag-path', type=str, required=True, help='rosbag文件路径')
+    parser.add_argument('--bag-path', type=str, required=True, help='car rosbag文件路径')
+    parser.add_argument('--lid-bag', type=str, required=True, help='lid rosbag文件路径')
+
     parser.add_argument('--lid-imu-path', type=str, required=True, help='lid-imu路径')
     parser.add_argument('--cam', type=str, required=True, help='cam路径')
     parser.add_argument('--output-dir', type=str, default='./output', help='输出目录路径')
@@ -89,7 +91,8 @@ def main():
     gtsam_opt_script = os.path.join(scripts_dir,"gtsam_pose_optimization.py")
     merged_map_script = os.path.join(scripts_dir,"generate_map.py")
     smooth_imu_pose_script = os.path.join(scripts_dir,"smooth_imu_pose.py")
-
+    reproject_lid2img_script = os.path.join(scripts_dir,"check_project_err.py")
+    
     print(f"\n{'#'*60}")
     print(f"# 姿态批量优化流水线")
     print(f"{'#'*60}")
@@ -99,6 +102,7 @@ def main():
 
     # 定义文件路径 
     cam_raw_path = args.cam
+    lid_bag = os.path.join(args.lid_bag)
     imu0_raw_path = os.path.join(args.lid_imu_path,"imu_1.txt")
     lid0_raw_path = os.path.join(args.lid_imu_path,"slam_pcd_1")
     imu0_path = os.path.join(args.output_dir, 'imu0.txt')
@@ -117,7 +121,9 @@ def main():
     evo_evaluate_path = os.path.join(args.output_dir,"evo_output")
     evo_evaluate_with_keyframe = os.path.join(evo_evaluate_path,"gtsam_compare.png")
     evo_evaluate_with_raw = os.path.join(evo_evaluate_path,"raw_compare.png")
-
+    reprj_output_folder = os.path.join(args.output_dir,"reproject_check")
+    
+    
     os.makedirs(evo_evaluate_path,exist_ok=True)
     # ===== 步骤0: imu0数据格式转换 =====
     if not args.skip_extract:
@@ -238,19 +244,30 @@ def main():
     run_shell_cmd(evo_cmd1)
     run_shell_cmd(evo_cmd2)
     
+    # ===== 步骤9: reproject lid map to image =====
+    run_step(
+        "点云投影检查",
+        ['python3', reproject_lid2img_script,
+         '-c', cam_raw_path,
+         '-l', deskew_pcd_real_path,
+         '-b', lid_bag,
+         '-p', gtsam_pose_file,
+         "-k", keyframe_file,
+         '--output_folder', reprj_output_folder]
+    )
+    
+    
     # ===== 完成 =====
     print(f"\n{'#'*60}")
     print(f"# 流水线完成！")
     print(f"{'#'*60}")
     print(f"\n生成的文件:")
-    print(f"  - {imu0_path} (原始IMU数据)")
-    print(f"  - {wheel_vel_path} (轮速数据)")
-    print(f"  - {imu0_vqf_path} (VQF姿态估计 - TUM格式)")
-    print(f"  - {imu0_att_path} (VQF姿态 - ATT格式)")
-    print(f"  - {imu0_replaced_path} (替换四元数后的IMU数据)")
-    print(f"  - {pose_output_path} (最终IMU位姿 - TUM格式)")
-    print(f"\n使用 evo 评估轨迹:")
-    print(f"  evo_ape tum groundtruth.txt {pose_output_path} -va --plot")
+    print(f"  - {pose_output_path} (imu+wheel航迹递推轨迹)")
+    print(f"  - {gtsam_pose_file} (gtsam关键帧pose)")
+    print(f"  - {evo_evaluate_path} (evo评估结果)")
+    print(f"  - {smoothed_all_imu_pose_file} (imu平滑pose结果)")
+    print(f"  - {reprj_output_folder} (重投影结果)")
+
 
 
 if __name__ == '__main__':
