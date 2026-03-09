@@ -64,7 +64,6 @@ def merge_pcds(pcd_dir, poses, voxel_size=0):
 
         merged += pcd
 
-        print("merged", file)
 
     return merged
 

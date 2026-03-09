@@ -129,7 +129,7 @@ class LidarPlaneOptimizer:
         """
 
         matched_infos = find_point_to_plane_matches(src_pcd,tar_pcd,Tws, Twt)
-        print(f"{i}-{j} p2p size: ",len(matched_infos))
+        #print(f"{i}-{j} p2p size: ",len(matched_infos))
         
         count = 0
         for m in matched_infos:
