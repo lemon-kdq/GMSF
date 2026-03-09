@@ -38,6 +38,13 @@ class LidarPlaneOptimizer:
                 poses.append(gtsam.Pose3(q, t))
         return poses
     
+    def find_pose_index(self,timestamp): 
+        for i in range(len(self.timestamps)): 
+            d_t = abs(timestamp - self.timestamps[i]) 
+            if d_t < 1e-4: 
+                return i
+        return None 
+    
     def pose3_to_4x4_manual(self,pose):
         # 1. 提取旋转矩阵 (3x3 numpy array)
         R = pose.rotation().matrix()
