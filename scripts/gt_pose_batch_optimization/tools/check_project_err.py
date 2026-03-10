@@ -47,7 +47,7 @@ if __name__ == "__main__":
     parser.add_argument("-b","--rosbag", type=str, help="lidar ROS bag 文件的路径")
     parser.add_argument("-p","--pose_file", type=str, help="pose file")
     parser.add_argument("--size", type=int, default = 4, help="output image folder")
-    parser.add_argument("--catkin_ws", type=str, default= "/home/kdq/Workspace/GT_Repos/catkin_ws_gt_tools_family_bucket", help="Name of the file output freeze period")
+    parser.add_argument("--catkin_ws", type=str, default= "/workspace/catkin_ws", help="Name of the file output freeze period")
     parser.add_argument("--output_folder", type=str, help="output image folder", default=None)
 
     args = parser.parse_args()
