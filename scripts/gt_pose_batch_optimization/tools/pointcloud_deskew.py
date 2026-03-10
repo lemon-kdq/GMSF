@@ -170,7 +170,6 @@ def main():
         if not pcd_path.exists():
             print(f"PCD不存在: {pcd_path}")
             continue
-        print(f"pcd : {pcd_path}")
         pc_np = load_pcd_at_pointrgbal(pcd_path)
         
         pc_corrected,tar_pos = deskew_pointcloud_batch(pc_np, lidar_ts, target_ts, pose_timestamps, positions, quaternions)
