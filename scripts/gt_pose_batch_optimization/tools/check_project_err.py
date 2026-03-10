@@ -12,7 +12,7 @@ from gt_tools.pcd.pointcloud_process import merge_pointcloud
 import cv2 
 import open3d as o3d  
 import numpy as np
-
+import sys
 
 
 def get_arround_pointcloud(map,Tcm,range = 200):  
@@ -112,3 +112,5 @@ if __name__ == "__main__":
             prj_image = visualize_projection(image,points2d,points3d[:,2])
             s_image = os.path.join(args.output_folder,f"{camera_ts_str}.jpeg")
             cv2.imwrite(s_image,prj_image)
+    rospy.signal_shutdown("Task completed")
+    sys.exit(0)
