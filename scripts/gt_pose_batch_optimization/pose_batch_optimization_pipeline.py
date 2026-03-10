@@ -24,7 +24,7 @@ def run_step(description, cmd):
     print(f"命令: {' '.join(cmd)}")
     print(f"{'='*60}")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=False, text=True)
     if result.stdout:
         print(result.stdout)
     if result.stderr:
