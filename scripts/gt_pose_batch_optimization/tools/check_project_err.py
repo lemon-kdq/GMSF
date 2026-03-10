@@ -105,7 +105,15 @@ if __name__ == "__main__":
                 pc_transformed = pc_o3d.transform(Tl0l_M)    
                 merged_pc.append(pc_transformed)
         if len(merged_pc) != 0: 
-            image = cv2.imread(cam_path)        
+            try:
+                image = cv2.imread(str(cam_path))
+                if image is None:
+                    raise ValueError("cv2.imread returned None")
+            except cv2.error as e:
+                print(f"OpenCV error: {e}")
+
+            except Exception as e:
+                print(f"Other error: {e}")               
             merged_pcd = merge_pointcloud(merged_pc) 
             points3d, _ = get_arround_pointcloud(merged_pcd,Tcl)
             points2d,_ = project_points_to_image(points3d,K,D,np.eye(4),cam_model)
