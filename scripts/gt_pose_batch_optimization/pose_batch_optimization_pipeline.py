@@ -47,6 +47,10 @@ def get_scripts_dir():
 
 def main():
     parser = argparse.ArgumentParser(description='姿态批量优化流水线')
+
+    parser.add_argument('--catkin-ws', type=str, required=True, help='catkin ws folder')
+    
+    
     parser.add_argument('--bag-path', type=str, required=True, help='car rosbag文件路径')
     parser.add_argument('--lid-bag', type=str, required=True, help='lid rosbag文件路径')
 
@@ -255,6 +259,7 @@ def main():
          '-b', lid_bag,
          '-p', gtsam_pose_file,
          "-k", keyframe_file,
+         "--catkin_ws", args.catkin_ws,
          '--output_folder', reprj_output_folder]
     )
     
