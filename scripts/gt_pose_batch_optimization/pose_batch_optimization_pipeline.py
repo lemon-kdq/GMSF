@@ -50,7 +50,9 @@ def main():
     parser.add_argument('--bag-path', type=str, required=True, help='car rosbag文件路径')
     parser.add_argument('--lid-bag', type=str, required=True, help='lid rosbag文件路径')
 
-    parser.add_argument('--lid-imu-path', type=str, required=True, help='lid-imu路径')
+    parser.add_argument('--imu', type=str, required=True, help='lid-imu路径')
+    parser.add_argument('--pcd', type=str, required=True, help='lid-imu路径')
+
     parser.add_argument('--cam', type=str, required=True, help='cam路径')
     parser.add_argument('--output-dir', type=str, default='./output', help='输出目录路径')
 
@@ -103,8 +105,8 @@ def main():
     # 定义文件路径 
     cam_raw_path = args.cam
     lid_bag = os.path.join(args.lid_bag)
-    imu0_raw_path = os.path.join(args.lid_imu_path,"imu_1.txt")
-    lid0_raw_path = os.path.join(args.lid_imu_path,"slam_pcd_1")
+    imu0_raw_path = args.imu
+    lid0_raw_path = args.pcd
     imu0_path = os.path.join(args.output_dir, 'imu0.txt')
     wheel_vel_path = os.path.join(args.output_dir, 'wheel_velocity.txt')
     imu0_vqf_path = os.path.join(args.output_dir, 'imu0_vqf.txt')
