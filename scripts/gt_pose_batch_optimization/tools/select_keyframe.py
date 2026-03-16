@@ -35,6 +35,21 @@ def quat_angle_diff_deg(q1, q2, order="xyzw"):
     angle_rad = r_rel.magnitude()
     return np.degrees(angle_rad)
 
+def quat_angle_diff_euler_deg(q1, q2, order="xyzw"):
+    q1 = np.asarray(q1, dtype=float)
+    q2 = np.asarray(q2, dtype=float)
+
+    if order == "wxyz":
+        q1 = [q1[1], q1[2], q1[3], q1[0]]
+        q2 = [q2[1], q2[2], q2[3], q2[0]]
+
+    r1 = R.from_quat(q1)
+    r2 = R.from_quat(q2)
+
+    r_rel = r1.inv() * r2
+    euler_deg = r_rel.as_euler(euler_seq, degrees=True)
+    return euler_deg  # [roll_err, pitch_err, yaw_err]
+
 def find_closest_timestamp(target_timestamps, query_timestamp):
     if len(target_timestamps) == 0:
         return None, None
@@ -44,7 +59,7 @@ def find_closest_timestamp(target_timestamps, query_timestamp):
     return closest_ts, time_diff
 
 def select_keyframes(imu_pose_file, lidar_timestamps, camera_timestamps, 
-                    sync_thres, match_thres, pose_thres, angle_thres, time_thres):
+                    sync_thres, match_thres, pose_thres, angle_thres, tilt_thres, time_thres):
     imu_data = np.loadtxt(imu_pose_file)
     if len(imu_data) == 0:
         print("错误: IMU位姿文件为空")
@@ -67,8 +82,8 @@ def select_keyframes(imu_pose_file, lidar_timestamps, camera_timestamps,
         quat = quaternions[i] 
         
         d_pos = np.linalg.norm(pos - last_state["pos"])
-        d_angle = quat_angle_diff_deg(quat,last_state["quat"])
-        if imu_ts - last_state["t"] > time_thres or d_pos > pose_thres or d_angle > angle_thres: 
+        d_roll,d_pitch,d_yaw = quat_angle_diff_euler_deg(quat,last_state["quat"])
+        if imu_ts - last_state["t"] > time_thres or d_pos > pose_thres or abs(d_yaw) > angle_thres or abs(d_roll) > tilt_thres or abs(d_pitch) > tilt_thres: 
             lidar_ts, lidar_diff = find_closest_timestamp(lidar_timestamps, imu_ts)
             camera_ts, camera_diff = find_closest_timestamp(camera_timestamps, imu_ts)
             diff_time = abs(camera_ts - lidar_ts)
@@ -115,6 +130,7 @@ def main():
     parser.add_argument('--match-threshold', type=float, default=0.05, help='匹配时间差阈值（秒）')
     parser.add_argument('--pose-threshold', type=float, default=20, help='关键帧pose距离阈值（米）')
     parser.add_argument('--angle-threshold', type=float, default=15, help='关键帧angle阈值（度）')
+    parser.add_argument('--tilt-angle-threshold', type=float, default=1.5, help='关键帧angle阈值（度）')
     parser.add_argument('--time-threshold', type=float, default=10, help='关键帧时间间隔阈值（秒）')
     args = parser.parse_args()
 
@@ -138,6 +154,7 @@ def main():
         args.match_threshold,
         args.pose_threshold,
         args.angle_threshold,
+        args.tilt_angle_threshold,
         args.time_threshold
     )
 
