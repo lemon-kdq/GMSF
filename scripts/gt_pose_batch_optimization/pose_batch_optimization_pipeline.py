@@ -13,7 +13,8 @@
 
 import os
 import sys
-import argparse
+import argparse 
+import shutil
 import subprocess
 from gt_tools.gt.gt_cmd import run_shell_cmd
 
@@ -81,6 +82,8 @@ def main():
     args = parser.parse_args()
 
     # 确保输出目录存在
+    if os.path.exists(args.output_dir):
+        shutil.rmtree(args.output_dir)
     os.makedirs(args.output_dir, exist_ok=True)
 
     # 脚本路径（自动从当前脚本位置判断）
@@ -129,7 +132,7 @@ def main():
     evo_evaluate_with_raw = os.path.join(evo_evaluate_path,"raw_compare.png")
     reprj_output_folder = os.path.join(args.output_dir,"reproject_check")
     
-    
+
     os.makedirs(evo_evaluate_path,exist_ok=True)
     # ===== 步骤0: imu0数据格式转换 =====
     if not args.skip_extract:
