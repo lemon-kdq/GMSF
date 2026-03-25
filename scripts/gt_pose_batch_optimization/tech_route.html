@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>核心技术路线 — GT Pose Batch Optimization</title>
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1b1f2a;
+      --surface2: #12151f;
+      --border:   #2e3446;
+      --text:     #cdd6f4;
+      --muted:    #6c7086;
+      --accent:   #89b4fa;
+      --green:    #a6e3a1;
+      --yellow:  #f9e2af;
+      --orange:   #fab387;
+      --teal:     #94e2d5;
+      --purple:   #cba6f7;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      min-height: 100vh;
+      padding: 2.5rem 1.5rem 4rem;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── header ─────────────────────────────── */
+    header {
+      max-width: 900px;
+      width: 100%;
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+    header h1 {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      margin-bottom: 0.5rem;
+    }
+    header p {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    /* ── main chart container ───────────────── */
+    .chart-wrap {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    /* ── horizontal track layout ────────────── */
+    .track-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    /* ── two main tracks ────────────────────── */
+    .track {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      flex: 1;
+    }
+
+    /* nodes in a track */
+    .node-wrap {
+      display: flex;
+      align-items: center;
+    }
+    .node-wrap.left { justify-content: flex-end; }
+    .node-wrap.right { justify-content: flex-start; }
+
+    .node {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      min-width: 160px;
+      max-width: 220px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .node-label {
+      font-weight: 700;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+    .node-sub {
+      color: var(--muted);
+      font-size: 0.72rem;
+      display: block;
+      line-height: 1.4;
+    }
+
+    /* colour per node type */
+    .n-imu   { border-left: 3px solid var(--green);  }
+    .n-vqf   { border-left: 3px solid var(--yellow); }
+    .n-dr    { border-left: 3px solid var(--orange); }
+    .n-lidar { border-left: 3px solid var(--teal);   }
+    .n-kf    { border-left: 3px solid var(--teal);   }
+    .n-dsk   { border-left: 3px solid var(--teal);   }
+    .n-opt   { border-left: 3px solid var(--purple); }
+    .n-smth  { border-left: 3px solid var(--accent);  }
+    .n-out   { border-left: 3px solid var(--accent); background: rgba(137,180,250,0.06); }
+
+    .n-imu   .node-label { color: var(--green);  }
+    .n-vqf   .node-label { color: var(--yellow); }
+    .n-dr    .node-label { color: var(--orange); }
+    .n-lidar .node-label { color: var(--teal);   }
+    .n-kf    .node-label { color: var(--teal);   }
+    .n-dsk   .node-label { color: var(--teal);   }
+    .n-opt   .node-label { color: var(--purple); }
+    .n-smth  .node-label { color: var(--accent); }
+    .n-out   .node-label { color: var(--accent); font-size: 0.88rem; }
+
+    /* ── connector arrow ────────────────────── */
+    .arrow-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      flex-shrink: 0;
+    }
+    .arrow {
+      color: var(--muted);
+      font-size: 1.4rem;
+      letter-spacing: 0.1em;
+    }
+
+    /* ── row spacer ─────────────────────────── */
+    .row-spacer {
+      height: 24px;
+    }
+
+    /* ── vertical join from lidar branch ───── */
+    .vert-join {
+      display: flex;
+      align-items: stretch;
+      height: 60px;
+      position: relative;
+    }
+    .vert-bar {
+      width: 1px;
+      background: var(--border);
+      margin-left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* ── split row: lidar branch ────────────── */
+    .split-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* ── final merge to GTSAM ───────────────── */
+    .merge-row {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 0;
+    }
+    .merge-cell {
+      display: flex;
+      align-items: center;
+    }
+    .merge-hbar {
+      height: 1px;
+      width: 60px;
+      background: var(--border);
+    }
+
+    /* ── output row ────────────────────────── */
+    .output-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      margin-top: 1.5rem;
+    }
+
+    /* ── legend ─────────────────────────────── */
+    .legend {
+      margin-top: 2.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.4rem;
+      justify-content: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .legend-pill {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── description cards ─────────────────── */
+    .desc-grid {
+      max-width: 1100px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 2.5rem;
+    }
+    .desc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.2rem;
+    }
+    .desc-card h3 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .desc-card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .desc-card li {
+      font-size: 0.78rem;
+      color: var(--muted);
+      padding-left: 0.8rem;
+      position: relative;
+      line-height: 1.5;
+    }
+    .desc-card li::before {
+      content: '·';
+      position: absolute;
+      left: 0;
+      color: var(--border);
+    }
+    .desc-card li strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .c-green  h3 { color: var(--green);  }
+    .c-teal   h3 { color: var(--teal);   }
+    .c-purple h3 { color: var(--purple); }
+
+    @media (max-width: 700px) {
+      .desc-grid { grid-template-columns: 1fr; }
+      .node { min-width: 120px; max-width: 160px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>核心技术路线</h1>
+  <p>IMU · 轮速计 · LiDAR 多传感器融合流水线</p>
+</header>
+
+<!-- ── chart ─────────────────────────────────────────── -->
+<div class="chart-wrap">
+
+  <!-- row: IMU branch -->
+  <div class="track-row">
+    <div class="track">
+      <div class="node-wrap left">
+        <div class="node n-imu">
+          <span class="node-label">IMU 原始数据</span>
+          <span class="node-sub">加速度 + 陀螺仪</span>
+        </div>
+      </div>
+      <div class="arrow-cell"><span class="arrow">→</span></div>
+      <div class="node-wrap right">
+        <div class="node n-vqf">
+          <span class="node-label">VQF 姿态估计</span>
+          <span class="node-sub">IMU 6D 融合<br>四元数姿态</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-spacer"></div>
+
+  <!-- row: VQF → DR -->
+  <div class="track-row">
+    <div class="track">
+      <div class="node-wrap left">
+        <div class="node n-vqf">
+          <span class="node-label">VQF 姿态</span>
+          <span class="node-sub">Roll / Pitch / Yaw</span>
+        </div>
+      </div>
+      <div class="arrow-cell"><span class="arrow">→</span></div>
+      <div class="node-wrap right">
+        <div class="node n-dr">
+          <span class="node-label">IMU + 轮速航位推算</span>
+          <span class="node-sub">运动学递推<br>杆臂效应补偿</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-spacer"></div>
+
+  <!-- row: DR → 初始轨迹 -->
+  <div class="track-row">
+    <div class="track">
+      <div class="node-wrap left">
+        <div class="node n-dr">
+          <span class="node-label">航位推算结果</span>
+          <span class="node-sub">全频轨迹初值</span>
+        </div>
+      </div>
+      <div class="arrow-cell"><span class="arrow">→</span></div>
+      <div class="node-wrap right">
+        <div class="node n-out">
+          <span class="node-label">初始轨迹</span>
+          <span class="node-sub">IMU + 轮速融合</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-spacer"></div>
+
+  <!-- split: LiDAR branch -->
+  <div class="track-row">
+    <div class="track">
+      <div class="node-wrap left">
+        <div class="node n-lidar">
+          <span class="node-label">LiDAR 点云</span>
+          <span class="node-sub">原始扫描帧</span>
+        </div>
+      </div>
+      <div class="arrow-cell"><span class="arrow">→</span></div>
+      <div class="node-wrap right">
+        <div class="node n-kf">
+          <span class="node-label">关键帧选择</span>
+          <span class="node-sub">位移 / 角度阈值</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-spacer"></div>
+
+  <!-- Kf → Deskew -->
+  <div class="track-row">
+    <div class="track">
+      <div class="node-wrap left">
+        <div class="node n-kf">
+          <span class="node-label">关键帧列表</span>
+          <span class="node-sub">LiDAR ↔ Camera</span>
+        </div>
+      </div>
+      <div class="arrow-cell"><span class="arrow">→</span></div>
+      <div class="node-wrap right">
+        <div class="node n-dsk">
+          <span class="node-label">点云正畸</span>
+          <span class="node-sub">分 batch 运动补偿<br>消除扫描畸变</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-spacer"></div>
+
+  <!-- deskew → merge to GTSAM -->
+  <div class="track-row">
+    <div class="track">
+      <div class="node-wrap left">
+        <div class="node n-dsk">
+          <span class="node-label">矫正点云</span>
+          <span class="node-sub">关键帧对齐</span>
+        </div>
+      </div>
+      <div class="arrow-cell"><span class="arrow">→</span></div>
+      <div class="node-wrap right">
+        <div class="node n-opt">
+          <span class="node-label">GTSAM 批量图优化</span>
+          <span class="node-sub">因子图 · 点到面 ICP<br>Levenberg-Marquardt</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-spacer"></div>
+
+  <!-- GTSAM → smooth -->
+  <div class="track-row">
+    <div class="track">
+      <div class="node-wrap left">
+        <div class="node n-opt">
+          <span class="node-label">GTSAM 优化位姿</span>
+          <span class="node-sub">关键帧精化</span>
+        </div>
+      </div>
+      <div class="arrow-cell"><span class="arrow">→</span></div>
+      <div class="node-wrap right">
+        <div class="node n-smth">
+          <span class="node-label">IMU 插值平滑</span>
+          <span class="node-sub">动态噪声机制<br>全频轨迹输出</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row-spacer"></div>
+
+  <!-- output -->
+  <div class="output-row">
+    <div class="node n-out" style="min-width:240px;max-width:300px;">
+      <span class="node-label">全频平滑轨迹 ✅</span>
+      <span class="node-sub">all_imu_smooth.txt<br>opt_map.pcd（点云地图）</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── legend ────────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-pill" style="background:#a6e3a1"></div>IMU 数据</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#f9e2af"></div>VQF 姿态</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#fab387"></div>航位推算</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#94e2d5"></div>LiDAR / 点云</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#cba6f7"></div>GTSAM 优化</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#89b4fa"></div>最终输出</div>
+</div>
+
+<!-- ── three description cards ───────────────────────── -->
+<div class="desc-grid">
+
+  <div class="desc-card c-green">
+    <h3>IMU 支路</h3>
+    <ul>
+      <li><strong>VQF</strong> — Vector Quaternion Filter，IMU 6D 融合输出四元数姿态</li>
+      <li><strong>航位推算</strong> — 轮速计提供前进速度，IMU 提供姿态方向，积分得到位置</li>
+      <li><strong>杆臂补偿</strong> — 补偿 IMU 与车体旋转中心之间的偏距</li>
+      <li><strong>输出</strong> — 全频轨迹初值，作为 GTSAM 里程计约束</li>
+    </ul>
+  </div>
+
+  <div class="desc-card c-teal">
+    <h3>LiDAR 支路</h3>
+    <ul>
+      <li><strong>关键帧选择</strong> — 位移 >10m / 偏航角 >15° / 横滚俯仰 >1° / 时间间隔 >10s 触发</li>
+      <li><strong>点云正畸</strong> — 扫描过程中车辆运动，按时间分 batch 补偿到目标时刻</li>
+      <li><strong>ICP 匹配</strong> — 当前帧点到前一帧平面特征的点到面距离作为优化约束</li>
+      <li><strong>输出</strong> — 矫正点云 + 关键帧位姿，作为 GTSAM 空间约束</li>
+    </ul>
+  </div>
+
+  <div class="desc-card c-purple">
+    <h3>GTSAM 优化</h3>
+    <ul>
+      <li><strong>因子图</strong> — 节点 = 关键帧位姿，因子 = Prior / Between / Attitude / Point-to-Plane</li>
+      <li><strong>里程计因子</strong> — 来自航位推算，约束相邻关键帧相对运动</li>
+      <li><strong>点到面因子</strong> — 点云 ICP 匹配残差，Huber 鲁棒核处理离群点</li>
+      <li><strong>求解</strong> — Levenberg-Marquardt，非线性最小二乘，最多 20 次迭代</li>
+    </ul>
+  </div>
+
+</div>
+
+</body>
+</html>

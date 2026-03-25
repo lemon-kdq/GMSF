@@ -17,6 +17,8 @@
 
 ### 1.2 核心技术路线
 
+> **高保真版本**：[tech_route.html](./tech_route.html)（CSS 布局，独立打开即可预览）
+
 ```mermaid
 flowchart LR
     IMU["IMU 原始数据"]
