@@ -36,8 +36,10 @@ flowchart LR
 
     IMU --> VQF --> DR --> INIT
     LIDAR --> KF --> DESKEW
-    DESKEW --> INIT
-    INIT --> GTSAM --> OUT
+    INIT --> KF
+    INIT --> DESKEW
+    DESKEW --> GTSAM
+    GTSAM --> OUT
     GTSAM --> SMOOTH --> OUT
 ```
 

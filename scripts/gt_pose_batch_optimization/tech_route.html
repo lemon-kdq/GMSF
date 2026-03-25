@@ -37,38 +37,22 @@
       margin-bottom: 2.5rem;
       max-width: 600px;
     }
-    header h1 {
-      font-size: 1.7rem;
-      font-weight: 700;
-      color: var(--blue);
-      margin-bottom: 0.4rem;
-    }
-    header p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+    header h1 { font-size: 1.7rem; font-weight: 700; color: var(--blue); margin-bottom: 0.4rem; }
+    header p  { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
 
     /* ── diagram ────────────────────────────── */
     .diagram {
-      max-width: 900px;
+      max-width: 1100px;
       width: 100%;
       display: flex;
       flex-direction: column;
       gap: 0;
     }
 
-    /* ── track row ─────────────────────────── */
-    .track {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
+    .track { display: flex; flex-direction: column; gap: 0; }
 
-    /* node pair in a row */
-    .row {
-      display: flex;
-      align-items: center;
-      gap: 0;
-    }
+    .row { display: flex; align-items: center; gap: 0; }
 
-    /* node */
     .node {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -80,20 +64,6 @@
       flex-shrink: 0;
     }
 
-    /* branch label pill */
-    .branch-pill {
-      font-size: 0.68rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 0.2rem 0.6rem;
-      border-radius: 20px;
-      flex-shrink: 0;
-    }
-    .pill-imu   { background: rgba(166,227,161,0.12); color: var(--green);  border: 1px solid rgba(166,227,161,0.3); }
-    .pill-lidar { background: rgba(148,226,213,0.12); color: var(--teal);  border: 1px solid rgba(148,226,213,0.3); }
-    .pill-core  { background: rgba(203,166,247,0.12); color: var(--purple); border: 1px solid rgba(203,166,247,0.3); }
-
     /* node colours */
     .n-imu   { border-color: rgba(166,227,161,0.4);  color: var(--green);  }
     .n-vqf   { border-color: rgba(249,226,175,0.4);  color: var(--yellow); }
@@ -103,55 +73,45 @@
     .n-dsk   { border-color: rgba(148,226,213,0.4);  color: var(--teal);   }
     .n-gtsam { border-color: rgba(203,166,247,0.4);  color: var(--purple); }
     .n-smth  { border-color: rgba(137,180,250,0.4);  color: var(--blue);   }
-    .n-out   { border-color: rgba(137,180,250,0.5);  color: var(--blue);   background: rgba(137,180,250,0.06); }
+    .n-out   { border-color: rgba(137,180,250,0.5);  color: var(--blue); background: rgba(137,180,250,0.06); }
 
-    /* arrows */
-    .arrow {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--muted);
-      font-size: 1.2rem;
-      padding: 0 0.5rem;
+    /* branch pills */
+    .branch-pill {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.55rem;
+      border-radius: 20px;
       flex-shrink: 0;
     }
-    .arrow-h { padding: 0 0.4rem; }   /* horizontal */
-    .arrow-v { padding: 0.2rem 0; }   /* vertical stub */
+    .pill-imu   { background: rgba(166,227,161,0.12); color: var(--green);  border: 1px solid rgba(166,227,161,0.3); }
+    .pill-lidar { background: rgba(148,226,213,0.12); color: var(--teal);   border: 1px solid rgba(148,226,213,0.3); }
+    .pill-core  { background: rgba(203,166,247,0.12); color: var(--purple); border: 1px solid rgba(203,166,247,0.3); }
 
-    /* spacer between rows */
-    .spacer { height: 6px; }
+    .arrow { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 1.2rem; padding: 0 0.5rem; flex-shrink: 0; }
+    .spacer { height: 8px; }
 
-    /* ── merge section ──────────────────────── */
-    .merge-wrap {
+    /* ── joiner arrows from both branches ─── */
+    .join-wrap {
       display: flex;
       flex-direction: column;
       gap: 0;
-    }
-
-    /* merge: two branches side by side → single */
-    .merge-row {
-      display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 0;
     }
 
-    /* vertical join bars */
-    .vbar {
-      width: 1px;
-      background: var(--border);
-    }
-    .hbar {
+    /* horizontal bar bridging the two branches */
+    .hbar-center {
       height: 1px;
       background: var(--border);
     }
 
-    /* ── final output ───────────────────────── */
-    .output-node {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    /* stubs pointing down to the merge bar */
+    .stub-top    { height: 6px; border-top: 1px solid var(--border); }
+    .stub-bottom { height: 6px; border-top: 1px solid var(--border); }
+
+    /* ── output ─────────────────────────────── */
+    .output-row { display: flex; align-items: center; justify-content: center; gap: 0; }
 
     /* ── legend ─────────────────────────────── */
     .legend {
@@ -161,17 +121,8 @@
       gap: 0.5rem 1.4rem;
       justify-content: center;
     }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      font-size: 0.78rem;
-      color: var(--muted);
-    }
-    .legend-pill {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-    }
+    .legend-item { display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--muted); }
+    .legend-pill { width: 10px; height: 10px; border-radius: 50%; }
 
     @media (max-width: 600px) {
       .node { font-size: 0.74rem; padding: 0.45rem 0.7rem; }
@@ -186,76 +137,78 @@
   <p>IMU · 轮速计 · LiDAR 多传感器融合流水线</p>
 </header>
 
-<!-- ═══════════════════════════════════════════════════ -->
 <div class="diagram">
 
-  <!-- ── IMU branch ──────────────────────────── -->
-
-  <!-- IMU → VQF -->
+  <!-- ══ IMU 支路 ══════════════════════════════ -->
   <div class="track">
     <div class="row">
+      <div class="branch-pill pill-imu">IMU</div>
+      <div class="arrow">→</div>
       <div class="node n-imu">IMU 原始数据</div>
-      <div class="arrow arrow-h">→</div>
+      <div class="arrow">→</div>
       <div class="node n-vqf">VQF 姿态估计</div>
-      <div class="arrow arrow-h">→</div>
+      <div class="arrow">→</div>
       <div class="node n-dr">IMU + 轮速航位推算</div>
-      <div class="arrow arrow-h">→</div>
+      <div class="arrow">→</div>
       <div class="node n-dr">初始轨迹</div>
     </div>
-    <div class="spacer"></div>
-    <div class="spacer"></div>
   </div>
 
-  <!-- ── LiDAR branch ────────────────────────── -->
+  <div class="spacer"></div>
+  <div class="spacer"></div>
 
-  <!-- LiDAR → KF → Deskew -->
+  <!-- ══ LiDAR 支路 ════════════════════════════ -->
   <div class="track">
     <div class="row">
+      <div class="branch-pill pill-lidar">LiDAR</div>
+      <div class="arrow">→</div>
       <div class="node n-lidar">LiDAR 点云</div>
-      <div class="arrow arrow-h">→</div>
+      <div class="arrow">→</div>
       <div class="node n-kf">关键帧选择</div>
-      <div class="arrow arrow-h">→</div>
+      <div class="arrow">→</div>
       <div class="node n-dsk">点云正畸</div>
     </div>
-    <div class="spacer"></div>
-    <div class="spacer"></div>
   </div>
 
-  <!-- ── merge ──────────────────────────────── -->
-  <div class="merge-wrap">
+  <div class="spacer"></div>
+  <div class="spacer"></div>
 
-    <!-- horizontal join bar -->
-    <div class="hbar" style="width:360px;margin:0 auto"></div>
-
-    <!-- two rows pointing to the merge bar -->
-    <div style="display:flex;flex-direction:column;gap:0">
-      <!-- top bar (LiDAR path stub) -->
-      <div style="height:6px;border-top:1px solid var(--border);margin:0 0 0 540px;width:180px"></div>
-      <!-- bottom bar (IMU path stub) -->
-      <div style="height:6px;border-top:1px solid var(--border);margin:0 auto 0 0;width:180px"></div>
+  <!-- ══ 两条支路汇聚 → GTSAM ══════════════════ -->
+  <div class="join-wrap">
+    <!-- horizontal merge bar -->
+    <div class="hbar-center" style="width:580px"></div>
+    <!-- top stub: INIT → merge bar -->
+    <div style="display:flex;width:580px">
+      <div style="flex:1"></div>
+      <div class="stub-top" style="width:120px"></div>
+      <div style="width:160px"></div>
+    </div>
+    <!-- bottom stub: DESKEW → merge bar -->
+    <div style="display:flex;width:580px">
+      <div style="flex:1"></div>
+      <div class="stub-bottom" style="width:120px"></div>
+      <div style="width:160px"></div>
     </div>
 
     <!-- merge to GTSAM -->
-    <div class="row" style="justify-content:center;gap:0">
+    <div class="output-row">
+      <div class="branch-pill pill-core">核心</div>
+      <div class="arrow">→</div>
       <div class="node n-gtsam">GTSAM 批量图优化</div>
-      <div class="arrow arrow-h">→</div>
+      <div class="arrow">→</div>
       <div class="node n-smth">IMU 插值平滑</div>
-      <div class="arrow arrow-h">→</div>
+      <div class="arrow">→</div>
       <div class="node n-out">全频平滑轨迹 ✅</div>
     </div>
-
   </div>
 
 </div>
 
-<!-- ═══════════════════════════════════════════════════ -->
+<!-- ══ legend ════════════════════════════════════ -->
 <div class="legend">
-  <div class="legend-item"><div class="legend-pill" style="background:#a6e3a1"></div>IMU</div>
-  <div class="legend-item"><div class="legend-pill" style="background:#f9e2af"></div>VQF 姿态估计</div>
-  <div class="legend-item"><div class="legend-pill" style="background:#fab387"></div>航位推算</div>
-  <div class="legend-item"><div class="legend-pill" style="background:#94e2d5"></div>LiDAR / 点云</div>
-  <div class="legend-item"><div class="legend-pill" style="background:#cba6f7"></div>GTSAM 优化</div>
-  <div class="legend-item"><div class="legend-pill" style="background:#89b4fa"></div>输出</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#a6e3a1"></div>IMU 支路</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#94e2d5"></div>LiDAR 支路</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#cba6f7"></div>核心优化</div>
 </div>
 
 </body>
