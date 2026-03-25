@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GT Pose Batch Optimization — 数据流图</title>
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --surface:  #1b1f2a;
+      --surface2: #12151f;
+      --border:   #2e3446;
+      --text:     #cdd6f4;
+      --muted:    #6c7086;
+      --accent:   #89b4fa;
+      --green:    #a6e3a1;
+      --yellow:   #f9e2af;
+      --orange:   #fab387;
+      --teal:     #94e2d5;
+      --purple:   #cba6f7;
+      --red:      #f38ba8;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      min-height: 100vh;
+      padding: 2rem 1rem 4rem;
+      font-size: 14px;
+    }
+
+    /* ── header ─────────────────────────────── */
+    header {
+      max-width: 1400px;
+      margin: 0 auto 2rem;
+      text-align: center;
+    }
+    header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      margin-bottom: 0.4rem;
+    }
+    header p { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── diagram canvas ─────────────────────── */
+    .diagram-outer {
+      max-width: 1400px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .diagram {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    /* ── stage column ───────────────────────── */
+    .stage {
+      border-right: 1px solid var(--border);
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .stage:last-child { border-right: none; }
+
+    .stage-head {
+      padding: 0.7rem 0.8rem;
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .stage-body {
+      padding: 0.8rem 0.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      flex: 1;
+    }
+
+    /* ── stage colours ─────────────────────── */
+    .s1 .stage-head { background: rgba(166,227,161,0.12); color: var(--green);  border-color: rgba(166,227,161,0.3); }
+    .s2 .stage-head { background: rgba(249,226,175,0.12); color: var(--yellow); border-color: rgba(249,226,175,0.3); }
+    .s3 .stage-head { background: rgba(250,179,135,0.12); color: var(--orange); border-color: rgba(250,179,135,0.3); }
+    .s4 .stage-head { background: rgba(148,226,213,0.12); color: var(--teal);   border-color: rgba(148,226,213,0.3); }
+    .s5 .stage-head { background: rgba(203,166,247,0.12); color: var(--purple); border-color: rgba(203,166,247,0.3); }
+    .s6 .stage-head { background: rgba(137,180,250,0.12); color: var(--accent); border-color: rgba(137,180,250,0.3); }
+
+    /* ── node ───────────────────────────────── */
+    .node {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.6rem;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+    .node-label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+    .node-sub {
+      color: var(--muted);
+      font-size: 0.7rem;
+      display: block;
+    }
+
+    /* ── node type colours ───────────────────── */
+    .node-script { border-left: 3px solid; }
+    .s1 .node-script { border-color: var(--green);  }
+    .s2 .node-script { border-color: var(--yellow);  }
+    .s3 .node-script { border-color: var(--orange);  }
+    .s4 .node-script { border-color: var(--teal);    }
+    .s5 .node-script { border-color: var(--purple);  }
+    .s6 .node-script { border-color: var(--accent);  }
+
+    .node-file {
+      background: rgba(255,255,255,0.02);
+      border: 1px dashed;
+    }
+    .s1 .node-file { border-color: rgba(166,227,161,0.4);  }
+    .s2 .node-file { border-color: rgba(249,226,175,0.4);  }
+    .s3 .node-file { border-color: rgba(250,179,135,0.4);  }
+    .s4 .node-file { border-color: rgba(148,226,213,0.4);  }
+    .s5 .node-file { border-color: rgba(203,166,247,0.4);  }
+    .s6 .node-file { border-color: rgba(137,180,250,0.4);  }
+
+    .node-file .node-label { color: var(--yellow); font-size: 0.72rem; }
+    .node-file .node-sub    { color: var(--muted); font-size: 0.65rem; }
+
+    /* ── arrows between columns ─────────────── */
+    .arrow-col {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 0.2rem;
+      color: var(--muted);
+      font-size: 1rem;
+      flex-shrink: 0;
+      width: 28px;
+    }
+
+    .diagram-with-arrows {
+      display: flex;
+      align-items: stretch;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    /* ── connector SVG strip ────────────────── */
+    .connector-strip {
+      max-width: 1400px;
+      margin: 0 auto 2.5rem;
+    }
+    .connector-strip svg {
+      width: 100%;
+      height: 48px;
+      overflow: visible;
+    }
+
+    /* ── IO table ───────────────────────────── */
+    .io-section {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .io-section h2 {
+      font-size: 1rem;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .io-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .io-table th {
+      background: var(--surface);
+      color: var(--muted);
+      font-weight: 600;
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+    .io-table td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      line-height: 1.5;
+    }
+    .io-table tr:hover td { background: rgba(137,180,250,0.04); }
+    .io-table code {
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.75rem;
+      color: var(--yellow);
+    }
+    .badge {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 1px 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .b1 { background: rgba(166,227,161,0.15); color: var(--green);  border: 1px solid rgba(166,227,161,0.3); }
+    .b2 { background: rgba(249,226,175,0.15); color: var(--yellow); border: 1px solid rgba(249,226,175,0.3); }
+    .b3 { background: rgba(250,179,135,0.15); color: var(--orange); border: 1px solid rgba(250,179,135,0.3); }
+    .b4 { background: rgba(148,226,213,0.15); color: var(--teal);   border: 1px solid rgba(148,226,213,0.3); }
+    .b5 { background: rgba(203,166,247,0.15); color: var(--purple); border: 1px solid rgba(203,166,247,0.3); }
+    .b6 { background: rgba(137,180,250,0.15); color: var(--accent); border: 1px solid rgba(137,180,250,0.3); }
+
+    /* ── legend ─────────────────────────────── */
+    .legend {
+      max-width: 1200px;
+      margin: 1.5rem auto 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      justify-content: center;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .legend-pill {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+
+    @media (max-width: 900px) {
+      .diagram { grid-template-columns: repeat(3, 1fr); }
+      .diagram > .stage:nth-child(3) { border-right: none; }
+      .diagram > .stage:nth-child(n+4) { border-top: 1px solid var(--border); }
+    }
+    @media (max-width: 600px) {
+      .diagram { grid-template-columns: 1fr; }
+      .diagram > .stage { border-right: none; border-bottom: 1px solid var(--border); }
+      .diagram > .stage:last-child { border-bottom: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>GT Pose Batch Optimization — 数据流图</h1>
+  <p>IMU · 轮速计 · LiDAR 多传感器融合流水线</p>
+</header>
+
+<!-- ── legend ───────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-pill" style="background:#a6e3a1"></div>阶段一 · 数据提取</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#f9e2af"></div>阶段二 · 姿态估计</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#fab387"></div>阶段三 · 航位推算</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#94e2d5"></div>阶段四 · 关键帧 &amp; 点云</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#cba6f7"></div>阶段五 · GTSAM 优化</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#89b4fa"></div>阶段六 · 后处理</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#3d4459;border:1px dashed #6c7086"></div>文件节点</div>
+  <div class="legend-item"><div class="legend-pill" style="background:#3d4459"></div>脚本节点</div>
+</div>
+
+<!-- ── main grid diagram ────────────────────────────── -->
+<div class="diagram-outer">
+  <div class="diagram">
+
+    <!-- ══════════ STAGE 1 ══════════ -->
+    <div class="stage s1">
+      <div class="stage-head">阶段一 · 数据提取</div>
+      <div class="stage-body">
+
+        <div class="node node-script">
+          <span class="node-label">extract_sensor_data.py</span>
+          <span class="node-sub">从 Rosbag 解析传感器数据</span>
+        </div>
+
+        <div class="node node-script">
+          <span class="node-label">get_files_timestamps.py</span>
+          <span class="node-sub">提取 LiDAR / Camera 时间戳</span>
+        </div>
+
+        <div class="node node-script">
+          <span class="node-label">transform_imu_format.py</span>
+          <span class="node-sub">IMU 数据格式转换</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">wheel_velocity.txt</span>
+          <span class="node-sub">轮速序列</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">lid_timestamps.txt</span>
+          <span class="node-sub">LiDAR 时间戳</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">cam_timestamps.txt</span>
+          <span class="node-sub">Camera 时间戳</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">imu0.txt</span>
+          <span class="node-sub">格式化 IMU 数据</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════ STAGE 2 ══════════ -->
+    <div class="stage s2">
+      <div class="stage-head">阶段二 · 姿态估计</div>
+      <div class="stage-body">
+
+        <div class="node node-script">
+          <span class="node-label">vqf_att_offline_estimate.py</span>
+          <span class="node-sub">VQF 6D 融合<br>IMU → 四元数姿态</span>
+        </div>
+
+        <div class="node node-script">
+          <span class="node-label">convert_tum_to_att.py</span>
+          <span class="node-sub">TUM → ATT 格式转换</span>
+        </div>
+
+        <div class="node node-script">
+          <span class="node-label">replace_imu_quat.py</span>
+          <span class="node-sub">原始 IMU 四元数替换<br>→ VQF 优化姿态</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">imu0_vqf.txt</span>
+          <span class="node-sub">VQF 估计姿态</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">imu0_att.txt</span>
+          <span class="node-sub">ATT 格式姿态</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">imu0_replaced.txt</span>
+          <span class="node-sub">VQF 姿态 + 原始 IMU</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════ STAGE 3 ══════════ -->
+    <div class="stage s3">
+      <div class="stage-head">阶段三 · 航位推算</div>
+      <div class="stage-body">
+
+        <div class="node node-script">
+          <span class="node-label">imu_dead_reckoning.py</span>
+          <span class="node-sub">运动学递推<br>轮速 + IMU 姿态融合<br>杆臂效应补偿</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">imu0_pose.txt</span>
+          <span class="node-sub">全频轨迹初值<br>timestamp x y z qx qy qz qw</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════ STAGE 4 ══════════ -->
+    <div class="stage s4">
+      <div class="stage-head">阶段四 · 关键帧 &amp; 点云</div>
+      <div class="stage-body">
+
+        <div class="node node-script">
+          <span class="node-label">select_keyframe.py</span>
+          <span class="node-sub">位移 / 角度 / 时间阈值<br>筛选关键帧</span>
+        </div>
+
+        <div class="node node-script">
+          <span class="node-label">pointcloud_deskew.py</span>
+          <span class="node-sub">分 batch 运动补偿<br>消除扫描畸变</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">keyframes.txt</span>
+          <span class="node-sub">LiDAR ↔ Camera<br>关键帧对应表</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">deskew_pcd/</span>
+          <span class="node-sub">矫正后关键帧点云</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">target_pose.txt</span>
+          <span class="node-sub">关键帧正畸目标位姿</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════ STAGE 5 ══════════ -->
+    <div class="stage s5">
+      <div class="stage-head">阶段五 · GTSAM 优化</div>
+      <div class="stage-body">
+
+        <div class="node node-script">
+          <span class="node-label">gtsam_pose_optimization.py</span>
+          <span class="node-sub">因子图构建<br>· Prior Factor（首帧固定）<br>· Between Factor（里程计）<br>· Attitude Factor（水平约束）<br>· Point-to-Plane（ICP）<br>Levenberg-Marquardt 求解</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">gtsam_pose.txt</span>
+          <span class="node-sub">关键帧优化位姿 ✅</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══════════ STAGE 6 ══════════ -->
+    <div class="stage s6">
+      <div class="stage-head">阶段六 · 后处理</div>
+      <div class="stage-body">
+
+        <div class="node node-script">
+          <span class="node-label">smooth_imu_pose.py</span>
+          <span class="node-sub">GTSAM 插值平滑<br>动态噪声机制<br>输出全频轨迹</span>
+        </div>
+
+        <div class="node node-script">
+          <span class="node-label">generate_map.py</span>
+          <span class="node-sub">点云拼接<br>生成全局地图</span>
+        </div>
+
+        <div class="node node-script">
+          <span class="node-label">check_project_err.py</span>
+          <span class="node-sub">点云重投影<br>到相机图像验证</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">all_imu_smooth.txt</span>
+          <span class="node-sub">全频平滑轨迹 ✅</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">opt_map.pcd</span>
+          <span class="node-sub">全局点云地图</span>
+        </div>
+
+        <div class="node node-file">
+          <span class="node-label">reproject_check/</span>
+          <span class="node-sub">重投影可视化</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── connector arrow strip ─────────────────────────── -->
+<div class="connector-strip">
+  <svg viewBox="0 0 1400 48" preserveAspectRatio="none" aria-hidden="true">
+    <!-- s1 → s2 -->
+    <defs>
+      <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#4c566a"/>
+      </marker>
+    </defs>
+    <!-- s1 out: center at 1/6 of width = 233 -->
+    <!-- s2 in  -->
+    <!-- s2 out -->
+    <!-- s3 in  -->
+    <!-- s3 out -->
+    <!-- s4 in  -->
+    <!-- s4 out -->
+    <!-- s5 in  -->
+    <!-- s5 out -->
+    <!-- s6 in  -->
+
+    <!-- one arrow per inter-column gap -->
+    <!-- gap positions (assuming equal columns in 1400px): each col = 233px, gap ~16px -->
+    <!-- col centres: 116, 349, 582, 815, 1048, 1281 -->
+    <line x1="249" y1="24" x2="316" y2="24" stroke="#4c566a" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="482" y1="24" x2="549" y2="24" stroke="#4c566a" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="715" y1="24" x2="782" y2="24" stroke="#4c566a" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="948" y1="24" x2="1015" y2="24" stroke="#4c566a" stroke-width="1.5" marker-end="url(#arr)"/>
+    <line x1="1181" y1="24" x2="1248" y2="24" stroke="#4c566a" stroke-width="1.5" marker-end="url(#arr)"/>
+  </svg>
+</div>
+
+<!-- ── IO table ──────────────────────────────────────── -->
+<div class="io-section">
+  <h2>各阶段 IO 关系</h2>
+  <table class="io-table">
+    <thead>
+      <tr>
+        <th>阶段</th>
+        <th>核心模块</th>
+        <th>主要输入</th>
+        <th>主要输出</th>
+        <th>下游消费者</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge b1">阶段一</span></td>
+        <td><code>extract_sensor_data.py</code></td>
+        <td>Rosbag</td>
+        <td><code>wheel_velocity.txt</code><br><code>lid_timestamps.txt</code><br><code>cam_timestamps.txt</code></td>
+        <td>航位推算、关键帧选择</td>
+      </tr>
+      <tr>
+        <td><span class="badge b2">阶段二</span></td>
+        <td><code>vqf_att_offline_estimate.py</code></td>
+        <td>IMU 原始数据</td>
+        <td>四元数姿态序列<br>(<code>imu0_replaced.txt</code>)</td>
+        <td>航位推算</td>
+      </tr>
+      <tr>
+        <td><span class="badge b3">阶段三</span></td>
+        <td><code>imu_dead_reckoning.py</code></td>
+        <td>IMU 姿态 + 轮速</td>
+        <td><code>imu0_pose.txt</code><br>(全频轨迹初值)</td>
+        <td>关键帧选择、点云正畸、全频平滑</td>
+      </tr>
+      <tr>
+        <td><span class="badge b4">阶段四</span></td>
+        <td><code>select_keyframe.py</code><br><code>pointcloud_deskew.py</code></td>
+        <td>原始点云、IMU pose、<br>时间戳</td>
+        <td><code>keyframes.txt</code><br><code>deskew_pcd/</code><br><code>target_pose.txt</code></td>
+        <td>GTSAM 优化、地图生成</td>
+      </tr>
+      <tr>
+        <td><span class="badge b5">阶段五</span></td>
+        <td><code>gtsam_pose_optimization.py</code></td>
+        <td>初始轨迹 + 矫正点云</td>
+        <td><code>gtsam_pose.txt</code><br>(关键帧优化位姿)</td>
+        <td>全频平滑、地图生成、重投影</td>
+      </tr>
+      <tr>
+        <td><span class="badge b6">阶段六</span></td>
+        <td><code>smooth_imu_pose.py</code><br><code>generate_map.py</code><br><code>check_project_err.py</code></td>
+        <td>全频初值 + 关键帧优化结果</td>
+        <td><code>all_imu_smooth.txt</code> ✅<br><code>opt_map.pcd</code><br><code>reproject_check/</code></td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>
